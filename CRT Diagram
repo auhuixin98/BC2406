@@ -1,0 +1,23 @@
+walmart.a <- walmart2011.dt[Type == 'A']
+library(rpart)
+library(rpart.plot)
+set.seed(2004)
+options(digits = 3)
+walmart.a[order(Date),week := week(Date)]
+walmart.a[,week := week-1]
+
+####Growing the tree####
+m2 <- rpart (Weekly_Sales ~ week+IsHoliday+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown , data = walmart.a, method = 'anova', cp=0)
+prp(m2)
+printcp(m2, digits = 3)
+plotcp(m2)
+cp.opt <- m2$cptable[which.min(m2$cptable[,"xerror"]),"CP"]
+
+#####Pruning the tree######
+m3 <- prune(m2, cp = cp.opt)
+print(m3)
+printcp(m3, digits = 3)
+
+####Plot Final Tree######
+prp(m3)
+m3$variable.importance

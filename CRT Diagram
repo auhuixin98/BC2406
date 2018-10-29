@@ -20,4 +20,5 @@ printcp(m3, digits = 3)
 
 ####Plot Final Tree######
 prp(m3)
+prp(m3, type=2, nn=T, nn.box.col = 'light blue')
 m3$variable.importance

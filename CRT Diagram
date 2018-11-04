@@ -22,3 +22,37 @@ printcp(m3, digits = 3)
 prp(m3)
 prp(m3, type=2, nn=T, nn.box.col = 'light blue')
 m3$variable.importance
+
+#####Clustering######
+set.seed(2004)
+Cluster <- kmeans(walmart.a$Weekly_Sales, 3)
+Cluster
+walmart.a$cluster <- Cluster$cluster
+Cluster$centers
+walmart.a[cluster == 1, .N]
+walmart.a[cluster == 2, .N]
+walmart.a[cluster == 3, .N]
+boxplot(walmart.a[cluster == 3, Weekly_Sales])
+walmart.a.3 <- walmart.a[cluster == 3]
+
+#####Growing the tree#####
+m2 <- rpart (Weekly_Sales ~ week+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown , data = walmart.a3, method = 'anova', cp=0)
+prp(m2)
+printcp(m2, digits = 3)
+plotcp(m2)
+cp.opt <- m2$cptable[which.min(m2$cptable[,"xerror"]),"CP"]
+
+#####Pruning the tree######
+m3 <- prune(m2, cp = cp.opt)
+print(m3)
+printcp(m3, digits = 3)
+
+####Plot Final Tree######
+prp(m3)
+prp(m3, type=2, nn=T, nn.box.col = 'light blue')
+m3$variable.importance
+
+#####Randomforest#####
+library(randomForest)
+fit <- randomForest(Weekly_Sales ~ week+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown, data = walmart.a)
+print(fit)

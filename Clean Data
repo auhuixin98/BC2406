@@ -57,6 +57,10 @@ walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, Type:='C']
 walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, unique(Type), by=Store]
 boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size", main = "Distributions of Size across Type")
 
+#narrow data scope
+walmart2011.dt <- walmart2011.dt[Weekly_Sales >= 2041 & Weekly_Sales <= 20132]
+summary(walmart2011.dt$Weekly_Sales)
+
 #include only 2011
 #write it to a new csv
 write.csv(walmart2011.dt, file="walmartCLEANED2011.csv", row.names=FALSE)

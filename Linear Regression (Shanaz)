@@ -1,0 +1,233 @@
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart.dt <- fread('walmartCLEANED2011.csv')
+
+#factorise the variables
+walmart.dt$Store <- factor(walmart.dt$Store)
+walmart.dt$Dept <- factor(walmart.dt$Dept)
+walmart.dt$IsHoliday <- factor(walmart.dt$IsHoliday)
+walmart.dt$Date<-factor(walmart.dt$Date)
+walmart.dt$Type<-factor(walmart.dt$Type)
+summary(walmart.dt)
+
+#overall linear regression
+m1<-lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown, data=walmart.dt)
+summary(m1)
+
+#calculate vif
+library(car)
+vif(m1)
+#size has multicollinearity
+
+#calculate lin reg without size 
+m2<-lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown-Size, data=walmart.dt)
+summary(m2)
+#vif
+library(car)
+vif(m2)
+#model diagnostic plots
+par(mfrow = c(2,2))  
+plot(m2) 
+par(mfrow = c(1,1))
+
+#backwise
+m.full <- lm(Weekly_Sales ~ .-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown-Size, data=walmart.dt) 
+m3 <- step(m.full)
+summary(m3)
+
+
+#=================SUBSET A=========
+walmartA.dt<-walmart.dt[Type=="A"]
+walmartA.dt<-walmartA.dt[,Type:=NULL]
+m4<-lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown, data=walmartA.dt)
+summary(m4)
+m.full2 <- lm(Weekly_Sales ~ .-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown-Size, data=walmartA.dt) 
+m7 <- step(m.full2)
+summary(m7)
+
+#=============SUBSET B============
+walmartB.dt<-walmart.dt[Type=="B"]
+walmartB.dt<-walmartB.dt[,Type:=NULL]
+m5<-lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown, data=walmartB.dt)
+summary(m5)
+
+#=============SUBSET C============
+walmartC.dt<-walmart.dt[Type=="C"]
+walmartC.dt<-walmartC.dt[,Type:=NULL]
+m6<-lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown, data=walmartC.dt)
+summary(m6)
+
+#==========SPLIT TRAIN TEST SET======
+library(caTools)
+set.seed(2004)
+train <- sample.split(Y = walmart.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.dt, train == T)
+testset <- subset(walmart.dt, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+m8 <- lm(Weekly_Sales ~.-Store-IsHoliday-MarkDown1-MarkDown2-MarkDown3-MarkDown4-MarkDown5-TotalMarkDown-Size, data = trainset)
+summary(m8)
+residuals(m8)
+RMSE.m8.train <- sqrt(mean(residuals(m8)^2))  # RMSE on trainset based on m5 model.
+RMSE.m8.train #RMSE value=3494.334
+summary(abs(residuals(m8)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m8.test <- predict(m8, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m8.test
+RMSE.m8.test <- sqrt(mean(testset.error^2))
+RMSE.m8.test
+#3546.736 RMSE
+summary(abs(testset.error))
+
+#=========COMBINING WEEKLY SALES FOR STORES============
+#FOR WHOLE WALMART REGARDLESS OF TYPE
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               "Size")
+c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmart1.dt<-c2
+c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(CPI),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmart1.dt) <- col.names
+
+#linear regression 
+m15<-lm(Weekly_Sales ~.-Store-Date, data=walmart1.dt)
+summary(m15)
+library(car)
+vif(m15)
+
+m.full6 <- lm(Weekly_Sales ~ .-Store-Date, data=walmart1.dt) 
+m16 <- step(m.full6)
+summary(m16)
+#everything except isholiday
+
+#WALMART SIZE A
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               "Size")
+c2 <- walmartA.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmartA1.dt<-c2
+c2<-walmartA.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(CPI),by=list(Store,Date)]
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartA.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartA1.dt<-merge(walmartA1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmartA1.dt) <- col.names
+
+#linear regression regsubsets
+m9<-lm(Weekly_Sales ~.-Store-Date, data=walmartA1.dt)
+summary(m9)
+library(car)
+vif(m9)
+
+m.full3 <- lm(Weekly_Sales ~ .-Store-Date, data=walmartA1.dt) 
+m10 <- step(m.full3)
+summary(m10)
+#only isholiday, temperature, average mark down and unemployment
+
+#library(leaps)
+#library(MASS)
+#regsubsets(Weekly_Sales ~.-Store-IsHoliday, data = walmartA1.dt, really.big = T)
+
+#WALMART B 
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               "Size")
+c2 <- walmartB.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmartB1.dt<-c2
+c2<-walmartB.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(CPI),by=list(Store,Date)]
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartB.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartB1.dt<-merge(walmartB1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmartB1.dt) <- col.names
+
+#linear regression regsubsets
+m11<-lm(Weekly_Sales ~.-Store-Date, data=walmartB1.dt)
+summary(m11)
+library(car)
+vif(m11)
+
+m.full4 <- lm(Weekly_Sales ~ .-Store-Date, data=walmartB1.dt) 
+m12 <- step(m.full4)
+summary(m12)
+#only temperature, fuel price, average mark down, unemployment and size
+
+#WALMART C
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               "Size")
+c2 <- walmartC.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmartC1.dt<-c2
+c2<-walmartC.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(CPI),by=list(Store,Date)]
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmartC.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmartC1.dt<-merge(walmartC1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmartC1.dt) <- col.names
+
+#linear regression regsubsets
+m13<-lm(Weekly_Sales ~.-Store-Date, data=walmartC1.dt)
+summary(m13)
+library(car)
+vif(m13)
+
+m.full5 <- lm(Weekly_Sales ~ .-Store-Date, data=walmartC1.dt) 
+m14 <- step(m.full5)
+summary(m14)
+#only temp, average mark down, cpi, unemployment, size 

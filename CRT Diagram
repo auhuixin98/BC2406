@@ -56,3 +56,6 @@ m3$variable.importance
 library(randomForest)
 fit <- randomForest(Weekly_Sales ~ week+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown, data = walmart.a)
 print(fit)
+
+####Grouping similar Dept together#####
+helpme <- walmart.a[Dept == 23 | Dept == 24 | Dept == 29 | Dept == 30 | Dept == 33 |Dept == 34 | Dept == 35 | Dept == 36]

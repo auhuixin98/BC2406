@@ -1,0 +1,40 @@
+library(data.table)
+library(car)
+library(rpart)
+data0 <- fread("walmartCLEANED2011.csv")
+summary(data0)
+
+# Logistic regression ------------------------------------------------
+# Delete MarkDown Columns
+data0$MarkDown1 <- NULL
+data0$MarkDown2 <- NULL
+data0$MarkDown3 <- NULL
+data0$MarkDown4 <- NULL
+data0$MarkDown5 <- NULL
+data0$TotalMarkDown <- NULL
+
+summary(data0)
+summary(data0$Weekly_Sales)
+boxplot(data0$Weekly_Sales)
+
+#data0[Weekly_Sales >= 15924, .N]
+#data0[Weekly_Sales >= 20132, .N]
+#data0[Weekly_Sales <= 8188, .N]
+
+data0[Weekly_Sales < 4286, Sales.Cat :="0"]
+data0[Weekly_Sales > 12260, Sales.Cat := "2"]
+data0[Weekly_Sales >= 4286 & Weekly_Sales <= 12260, Sales.Cat := "1"]
+
+data0$Sales.Cat <- factor(data0$Sales.Cat)
+summary(data0$Sales.Cat)
+
+data0$Date <- as.character(data0$Date)
+
+m2 <- glm(Sales.Cat ~ . - Weekly_Sales - Date, family=binomial(), data = data0)
+summary(m2)
+
+vif(m2)
+## No multicollinearity issues in m2.
+
+OR2 <- exp(coef(m2))
+OR2

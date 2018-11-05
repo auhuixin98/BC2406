@@ -1,0 +1,129 @@
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart.dt <- fread('walmartCLEANED2011.csv')
+
+#factorise the variables
+walmart.dt$Store <- factor(walmart.dt$Store)
+walmart.dt$Dept <- factor(walmart.dt$Dept)
+walmart.dt$IsHoliday <- factor(walmart.dt$IsHoliday)
+walmart.dt$Date<-factor(walmart.dt$Date)
+walmart.dt$Type<-factor(walmart.dt$Type)
+summary(walmart.dt)
+
+#=========COMBINING WEEKLY SALES FOR STORES============
+#FOR WHOLE WALMART REGARDLESS OF TYPE
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               "Size", "Type")
+c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmart1.dt<-c2
+c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(CPI),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Type), by=list(Store,Date)]
+colnames(c2)[3]<-"V5"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmart1.dt) <- col.names
+
+
+#======CRT for overall walmart 
+
+library(rpart)
+library(rpart.plot)			# For Enhanced tree plots via PRP()
+
+set.seed(2004)
+options(digits = 3)
+
+#grow tree
+m1 <- rpart(Weekly_Sales ~ ., data = walmart1.dt, method = 'anova', control = rpart.control(minsplit = 2, cp = 0))
+print(m1)
+printcp(m1, digits = 3)
+plotcp(m1)
+
+cp.opt <- m1$cptable[which.min(m1$cptable[,"xerror"]),"CP"]
+
+#prune tree
+m2 <- prune(m1, cp = cp.opt)
+print(m2)
+printcp(m2, digits = 3)
+
+#plot tree
+prp(m2, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")
+
+
+#========SUBSET BASED ON TYPE
+#TYPE A
+walmart1A <- walmart1.dt[Type=="A"]
+walmart1A <- walmart1A[,Type:=NULL]
+
+#grow tree
+m5 <- rpart(Weekly_Sales ~ ., data = walmart1A, method = 'anova', control = rpart.control(minsplit = 2, cp = 0))
+print(m5)
+printcp(m5, digits = 3)
+plotcp(m5)
+
+cp.opt <- m5$cptable[which.min(m5$cptable[,"xerror"]),"CP"]
+
+#prune tree
+m6 <- prune(m5, cp = cp.opt)
+print(m6)
+printcp(m6, digits = 3)
+
+#plot tree
+prp(m6, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")
+
+
+#SUBSET B
+walmart1B <- walmart1.dt[Type=="B"]
+walmart1B <- walmart1B[,Type:=NULL]
+
+#grow tree
+m7 <- rpart(Weekly_Sales ~ ., data = walmart1B, method = 'anova', control = rpart.control(minsplit = 2, cp = 0))
+print(m7)
+printcp(m7, digits = 3)
+plotcp(m7)
+
+cp.opt <- m7$cptable[which.min(m7$cptable[,"xerror"]),"CP"]
+
+#prune tree
+m8 <- prune(m7, cp = cp.opt)
+print(m8)
+printcp(m8, digits = 3)
+
+#plot tree
+prp(m8, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")
+
+#SUBSET C
+walmart1C <- walmart1.dt[Type=="C"]
+walmart1C <- walmart1C[,Type:=NULL]
+
+#grow tree
+m9 <- rpart(Weekly_Sales ~ ., data = walmart1C, method = 'anova', control = rpart.control(minsplit = 2, cp = 0))
+print(m9)
+printcp(m9, digits = 3)
+plotcp(m9)
+
+cp.opt <- m9$cptable[which.min(m9$cptable[,"xerror"]),"CP"]
+
+#prune tree
+m10 <- prune(m9, cp = cp.opt)
+print(m10)
+printcp(m10, digits = 3)
+
+#plot tree
+prp(m10, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")

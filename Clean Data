@@ -90,3 +90,8 @@ boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size",
 #include only 2011
 #write it to a new csv
 write.csv(walmart2011.dt, file="walmartCLEANED2011.csv", row.names=FALSE)
+
+#Subset by Type
+walmart.a <- walmart2011.dt[Type == 'A']
+walmart.b <- walmart2011.dt[Type == 'B']
+walmart.c <- walmart2011.dt[Type == 'C']

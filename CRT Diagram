@@ -1,61 +1,26 @@
-walmart.a <- walmart2011.dt[Type == 'A']
+####CRT####
 library(rpart)
 library(rpart.plot)
+library(randomForest)
 set.seed(2004)
 options(digits = 3)
-walmart.a[order(Date),week := week(Date)]
-walmart.a[,week := week-1]
 
-####Growing the tree####
-m2 <- rpart (Weekly_Sales ~ week+IsHoliday+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown , data = walmart.a, method = 'anova', cp=0)
-prp(m2)
-printcp(m2, digits = 3)
-plotcp(m2)
-cp.opt <- m2$cptable[which.min(m2$cptable[,"xerror"]),"CP"]
+#CRT for all the variables#
+#Growing the tree#
+m1 <- rpart(Weekly_Sales ~ Type+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart2011.dt,method = 'anova', cp=0)
+prp(m1)
+printcp(m1)
+plotcp(m1)
+co.opt <- m1$cptable[which.min(m1$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+m2 <- prune(m1,cp = cp.opt)
+prp(m2, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")
+printcp(m2, digits = 3) #Xerror is 0.130
+m2$variable.importance
 
-#####Pruning the tree######
-m3 <- prune(m2, cp = cp.opt)
-print(m3)
-printcp(m3, digits = 3)
-
-####Plot Final Tree######
-prp(m3)
-prp(m3, type=2, nn=T, nn.box.col = 'light blue')
-m3$variable.importance
-
-#####Clustering######
-set.seed(2004)
-Cluster <- kmeans(walmart.a$Weekly_Sales, 3)
-Cluster
-walmart.a$cluster <- Cluster$cluster
-Cluster$centers
-walmart.a[cluster == 1, .N]
-walmart.a[cluster == 2, .N]
-walmart.a[cluster == 3, .N]
-boxplot(walmart.a[cluster == 3, Weekly_Sales])
-walmart.a.3 <- walmart.a[cluster == 3]
-
-#####Growing the tree#####
-m2 <- rpart (Weekly_Sales ~ week+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown , data = walmart.a3, method = 'anova', cp=0)
-prp(m2)
-printcp(m2, digits = 3)
-plotcp(m2)
-cp.opt <- m2$cptable[which.min(m2$cptable[,"xerror"]),"CP"]
-
-#####Pruning the tree######
-m3 <- prune(m2, cp = cp.opt)
-print(m3)
-printcp(m3, digits = 3)
-
-####Plot Final Tree######
-prp(m3)
-prp(m3, type=2, nn=T, nn.box.col = 'light blue')
-m3$variable.importance
-
-#####Randomforest#####
-library(randomForest)
-fit <- randomForest(Weekly_Sales ~ week+Temperature+Fuel_Price+CPI+Unemployment+Size+AverageMarkDown, data = walmart.a)
+#randomForest model#
+fit <- randomForest(Weekly_Sales ~ Type+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart2011.dt)
 print(fit)
-
-####Grouping similar Dept together#####
-helpme <- walmart.a[Dept == 23 | Dept == 24 | Dept == 29 | Dept == 30 | Dept == 33 |Dept == 34 | Dept == 35 | Dept == 36]
+mse <- fit$mse
+mean(mse)/1.53e+11 #Xerror is 0.124
+#Choose to use randomForest model for the rest of the types#

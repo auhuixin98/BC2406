@@ -2,6 +2,7 @@
 library(rpart)
 library(rpart.plot)
 library(randomForest)
+library(caTools)
 set.seed(2004)
 options(digits = 3)
 
@@ -15,7 +16,7 @@ co.opt <- m1$cptable[which.min(m1$cptable[,"xerror"]),"CP"]
 #Prune the tree#
 m2 <- prune(m1,cp = cp.opt)
 prp(m2, type=2, nn=T, fallen.leaves=T, branch.lty=3, nn.box.col = 'light blue', min.auto.cex = 0.7, nn.cex = 0.6, split.cex = 1.1, shadow.col="grey")
-printcp(m2, digits = 3) #Xerror is 0.130
+printcp(m2, digits = 3)
 m2$variable.importance
 
 #randomForest model#
@@ -24,3 +25,54 @@ print(fit)
 mse <- fit$mse
 mean(mse)/1.53e+11 #Xerror is 0.124
 #Choose to use randomForest model for the rest of the types#
+
+#Type A#
+mA <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.a)
+print(mA) 
+#Train Model A#
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+mA1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+predmA1<-predict(object=mA1,testset)
+#Calculating testset error#
+testset.error <- testset$Weekly_Sales - predmA1
+RMSE.mA1.test <- sqrt(mean(testset.error^2))
+summary(abs(testset.error))
+
+#Type B#
+mB <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.b)
+print(mB) 
+#Train Model B#
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+mB1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+predmB1<-predict(object=mB1,testset)
+#Calculating testset error#
+testset.error <- testset$Weekly_Sales - predmB1
+RMSE.mB1.test <- sqrt(mean(testset.error^2))
+summary(abs(testset.error))
+
+#Type C#
+mC <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.c)
+print(mC) 
+#Train Model C#
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+mC1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+predmC1<-predict(object=mC1,testset)
+#Calculating testset error#
+testset.error <- testset$Weekly_Sales - predmC1
+RMSE.mC1.test <- sqrt(mean(testset.error^2))
+summary(abs(testset.error))

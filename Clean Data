@@ -28,8 +28,7 @@ walmart.dt<-walmart.dt[,AverageMarkDown:=TotalMarkDown/5]
 summary(walmart.dt$AverageMarkDown)
 
 #Summing up the Weekly Sales by Store
-col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
-               +                "Size", "Type")
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment", "Size", "Type")
 c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
 walmart1.dt<-c2
 c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]

@@ -27,9 +27,39 @@ summary(walmart.dt$TotalMarkDown)
 walmart.dt<-walmart.dt[,AverageMarkDown:=TotalMarkDown/5]
 summary(walmart.dt$AverageMarkDown)
 
+#Summing up the Weekly Sales by Store
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment",
+               +                "Size", "Type")
+c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmart1.dt<-c2
+c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(CPI),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Type), by=list(Store,Date)]
+colnames(c2)[3]<-"V5"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmart1.dt) <- col.names
+View(walmart1.dt)
+
 #subset data to only include for year 2011 as it is the recent full year
-walmart.dt$Year <- substr(walmart.dt$Date,1,4)
-walmart2011.dt<-walmart.dt[Year==2011]
+walmart1.dt$Year <- substr(walmart1.dt$Date,1,4)
+walmart2011.dt<-walmart1.dt[Year==2011]
 summary(walmart2011.dt)
 
 #remove year column

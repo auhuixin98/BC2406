@@ -1,0 +1,138 @@
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart.dt <- fread('train.csv')
+
+#Factorize store, dept, date, type & holiday
+walmart.dt$Store <- factor(walmart.dt$Store)
+walmart.dt$Dept <- factor(walmart.dt$Dept)
+walmart.dt$IsHoliday <- factor(walmart.dt$IsHoliday)
+walmart.dt$Date<-factor(walmart.dt$Date)
+walmart.dt$Type<-factor(walmart.dt$Type)
+summary(walmart.dt)
+
+#Remove negative weekly sales 
+walmart.dt$Weekly_Sales <- abs(walmart.dt$Weekly_Sales)
+summary(walmart.dt$Weekly_Sales)
+
+#take NA in markdown as 0 
+walmart.dt<-walmart.dt[is.na(MarkDown1),MarkDown1:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown2),MarkDown2:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown3),MarkDown3:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown4),MarkDown4:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown5),MarkDown5:=0]
+
+#Average the markdown for the week
+walmart.dt<-walmart.dt[,TotalMarkDown:=MarkDown1+MarkDown2+MarkDown3+MarkDown4+MarkDown5]
+summary(walmart.dt$TotalMarkDown)
+walmart.dt<-walmart.dt[,AverageMarkDown:=TotalMarkDown/5]
+summary(walmart.dt$AverageMarkDown)
+
+#Summing up the Weekly Sales by Store
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment", "Size", "Type")
+c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmart1.dt<-c2
+c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(CPI),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Type), by=list(Store,Date)]
+colnames(c2)[3]<-"V5"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmart1.dt) <- col.names
+View(walmart1.dt)
+
+#subset data to only include for year 2011 as it is the recent full year
+walmart1.dt$Year <- substr(walmart1.dt$Date,1,4)
+walmart2011.dt<-walmart1.dt[Year==2011]
+summary(walmart2011.dt)
+
+#remove year column
+walmart2011.dt<-walmart2011.dt[,Year:=NULL]
+
+#boxplot of size for each type
+boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size", main = "Distributions of Size across Type")
+
+#explore data for the type A
+walmart2011.dt[Type=='A',summary(Size)]
+walmart2011.dt[Type=='A'&Size<158114,unique(Size),by=Store]
+#store 33 & store 36 size differs greatly from average supercentre (type A) and matches the mean for store
+
+#explore data for type B
+walmart2011.dt[Type=='B',summary(Size)]
+walmart2011.dt[Type=='B'&Size<93188,unique(Size),by=Store]
+#store 3 and 5 are outliers for type B and matches more for type C
+
+#explore data for type C
+walmart2011.dt[Type=='C',summary(Size)]
+
+#recode stores 33&36&3&5 to type C
+walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, Type:='C']
+#verify
+walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, unique(Type), by=Store]
+boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size", main = "Distributions of Size across Type")
+
+#Change date to continuous variable, week
+walmart2011.dt[order(Date),week := week(Date)]
+walmart2011.dt[,week := week-1]
+
+#narrowing
+summary(walmart2011.dt$Weekly_Sales)
+plot(jitter(as.numeric(walmart2011.dt$Weekly_Sales)))
+abline(h=1750000, col="blue")
+boxplot(walmart2011.dt$Weekly_Sales)
+walmart2011.1<-walmart2011.dt[Weekly_Sales<=1750000]
+
+#include only 2011
+#write it to a new csv
+write.csv(walmart2011.1, file="walmartCLEANED2011-1.csv", row.names=FALSE)
+
+#Subset by Type
+walmart.a <- walmart2011.dt[Type == 'A']
+walmart.b <- walmart2011.dt[Type == 'B']
+walmart.c <- walmart2011.dt[Type == 'C']
+
+#Creating a function to calculate RMSE
+rmse <- function(error)
+{
+  sqrt(mean(error^2))
+}
+#Calculating the baseline for different subset
+#Overall
+set.seed(2004)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+all.baseline <- rmse(testset$Weekly_Sales - mean(trainset$Weekly_Sales))
+#Type A
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+a.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))
+#Type B
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+b.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))
+#Type C
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+c.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))

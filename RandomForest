@@ -4,15 +4,15 @@ options(digits = 3)
 
 #randomForest model#
 set.seed(2004)
-fit <- randomForest(Weekly_Sales ~ Type+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart2011.dt)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+fit <- randomForest(Weekly_Sales ~ Type+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
 print(fit)
-predicted <- predict(fit, walmart2011.dt)
-rmse(predicted-walmart2011.dt$Weekly_Sales) #75081
+predicted <- predict(fit, testset)
+rmse(predicted-testset$Weekly_Sales)
 
 #Type A#
-set.seed(2004)
-mA <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.a)
-print(mA) 
 #Train Model A#
 set.seed(2004)
 train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
@@ -21,15 +21,14 @@ testset <- subset(walmart.a, train == F)
 summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
+set.seed(2004)
 mA1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
-predmA1<-predict(object=mA1,testset)
+print(mA1)
+predmA1<-predict(mA1,testset)
 #Calculating testset error#
 rmse(predmA1-testset$Weekly_Sales)
 
 #Type B#
-set.seed(2004)
-mB <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.b)
-print(mB) 
 #Train Model B#
 set.seed(2004)
 train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
@@ -38,15 +37,14 @@ testset <- subset(walmart.b, train == F)
 summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
+set.seed(2004)
 mB1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mB1)
 predmB1<-predict(object=mB1,testset)
 #Calculating testset error#
 rmse(predmB1-testset$Weekly_Sales)
 
 #Type C#
-set.seed(2004)
-mC <- randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = walmart.c)
-print(mC) 
 #Train Model C#
 set.seed(2004)
 train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
@@ -55,7 +53,9 @@ testset <- subset(walmart.c, train == F)
 summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
+set.seed(2004)
 mC1<-randomForest(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mC1)
 predmC1<-predict(object=mC1,testset)
 #Calculating testset error#
 rmse(predmC1-testset$Weekly_Sales)

@@ -98,3 +98,13 @@ write.csv(walmart2011.dt, file="walmartCLEANED2011.csv", row.names=FALSE)
 walmart.a <- walmart2011.dt[Type == 'A']
 walmart.b <- walmart2011.dt[Type == 'B']
 walmart.c <- walmart2011.dt[Type == 'C']
+
+#Creating a function to calculate RMSE
+rmse <- function(error)
+{
+sqrt(mean(error^2))
+}
+#Calculating the baseline for different subset
+a.baseline <- rmse(walmart.a$Weekly_Sales-mean(walmart.a$Weekly_Sales)) #316008
+b.baseline <- rmse(walmart.b$Weekly_Sales-mean(walmart.b$Weekly_Sales)) #273824
+c.baseline <- rmse(walmart.c$Weekly_Sales-mean(walmart.c$Weekly_Sales)) #95353

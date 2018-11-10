@@ -105,6 +105,12 @@ rmse <- function(error)
 sqrt(mean(error^2))
 }
 #Calculating the baseline for different subset
+#Overall
+set.seed(2004)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+all.baseline <- rmse(testset$Weekly_Sales - mean(trainset$Weekly_Sales))
 #Type A
 set.seed(2004)
 train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)

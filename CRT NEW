@@ -1,0 +1,95 @@
+# NEW CRT WITH ALL VARIABLES EXCEPT DATE AND TYPE(AFTER BEING SUBSETTED) AND THEIR NEW RMSES
+
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart2011.dt <- fread('walmartCLEANED2011-1.csv')
+
+library(Metrics)
+library(rpart)
+library(rpart.plot)
+library(caTools)
+set.seed(2004)
+options(digits = 3)
+
+#CRT for all the variables#
+#Growing the tree#
+set.seed(2004)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+m1 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Type+Size+CPI+Unemployment+IsHoliday, data = trainset, method = 'anova', cp=0)
+prp(m1)
+printcp(m1)
+plotcp(m1)
+cp.opt <- m1$cptable[which.min(m1$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m2 <- prune(m1,cp = cp.opt)
+prp(m2,nn.box.col = 'light blue')
+printcp(m2, digits = 3)
+m2$variable.importance
+predicted <- predict(m2, testset)
+rmse(testset$Weekly_Sales,predicted) #142688 
+
+#Type A
+#Grow the tree#
+walmart.a <- walmart2011.dt[Type == 'A']
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+m3 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m3)
+printcp(m3)
+plotcp(m3)
+cp.opt <- m3$cptable[which.min(m3$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m4 <- prune(m3,cp = cp.opt)
+prp(m4,nn.box.col = 'light blue')
+printcp(m4, digits = 3)
+m4$variable.importance
+predicted <- predict(m4, testset)
+rmse(testset$Weekly_Sales,predicted) #167,727 
+
+#Type B
+#Grow the tree#
+walmart.b <- walmart2011.dt[Type == 'B']
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+m5 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m5)
+printcp(m5)
+plotcp(m5)
+cp.opt <- m5$cptable[which.min(m5$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m6 <- prune(m5,cp = cp.opt)
+prp(m6,nn.box.col = 'light blue')
+printcp(m6, digits = 3)
+m6$variable.importance
+predicted <- predict(m6, testset)
+rmse(testset$Weekly_Sales,predicted) #146,743 
+
+#Type C
+#Grow the tree#
+walmart.c <- walmart2011.dt[Type == 'C']
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+m7 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m7)
+printcp(m7)
+plotcp(m7)
+cp.opt <- m7$cptable[which.min(m7$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m8 <- prune(m7,cp = cp.opt)
+prp(m8,nn.box.col = 'light blue')
+printcp(m8, digits = 3)
+m8$variable.importance
+predicted <- predict(m8, testset)
+rmse(testset$Weekly_Sales,predicted) #65,843 

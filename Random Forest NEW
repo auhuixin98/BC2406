@@ -1,0 +1,80 @@
+#INCLUDED ALL THE VARIABLES AND WITH THE NARROWING OF DATA
+
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart2011.dt <- fread('walmartCLEANED2011-1.csv')
+
+library(randomForest)
+library(caTools)
+options(digits = 3)
+summary(walmart2011.dt)
+
+#factorise the variables
+walmart2011.dt$Store <- factor(walmart2011.dt$Store)
+walmart2011.dt$IsHoliday <- factor(walmart2011.dt$IsHoliday)
+walmart2011.dt$Date<-factor(walmart2011.dt$Date)
+walmart2011.dt$Type<-factor(walmart2011.dt$Type)
+summary(walmart2011.dt)
+
+walmart2011.dt[,Date:=NULL]
+
+#randomForest model#
+set.seed(2004)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(fit)
+predicted <- predict(fit, testset)
+rmse(testset$Weekly_Sales,predicted) #123,104
+
+#Type A#
+#Train Model A#
+walmart.a <- walmart2011.dt[Type == 'A']
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mA1)
+predmA1<-predict(mA1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmA1) #168,327
+
+#Type B#
+#Train Model B#
+walmart.b <- walmart2011.dt[Type == 'B']
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mB1)
+predmB1<-predict(object=mB1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmB1) #123,131
+
+#Type C#
+#Train Model C#
+walmart.c <- walmart2011.dt[Type == 'C']
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mC1)
+predmC1<-predict(object=mC1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmC1) #65,472

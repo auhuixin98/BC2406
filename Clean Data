@@ -105,6 +105,21 @@ rmse <- function(error)
 sqrt(mean(error^2))
 }
 #Calculating the baseline for different subset
-a.baseline <- rmse(walmart.a$Weekly_Sales-mean(walmart.a$Weekly_Sales)) #316008
-b.baseline <- rmse(walmart.b$Weekly_Sales-mean(walmart.b$Weekly_Sales)) #273824
-c.baseline <- rmse(walmart.c$Weekly_Sales-mean(walmart.c$Weekly_Sales)) #95353
+#Type A
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+a.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))
+#Type B
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+b.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))
+#Type C
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+c.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))

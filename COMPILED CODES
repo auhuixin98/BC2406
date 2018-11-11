@@ -459,8 +459,8 @@ prp(m2,nn.box.col = 'light blue', cex=0.3)
 fancyRpartPlot(m2, cex=0.5)
 printcp(m2, digits = 3)
 m2$variable.importance
-predicted <- predict(m2, testset)
-rmse(testset$Weekly_Sales,predicted) #142688 
+predicted <- predict(m2,testset)
+rmse(testset$Weekly_Sales-predicted) #142688 
 
 #Type A
 #Grow the tree#
@@ -481,7 +481,7 @@ fancyRpartPlot(m4, cex=0.6)
 printcp(m4, digits = 3)
 m4$variable.importance
 predicted <- predict(m4, testset)
-rmse(testset$Weekly_Sales,predicted) #167,727 
+rmse(testset$Weekly_Sales-predicted) #167,727 
 
 #Type B
 #Grow the tree#
@@ -502,7 +502,7 @@ fancyRpartPlot(m6, cex=0.6)
 printcp(m6, digits = 3)
 m6$variable.importance
 predicted <- predict(m6, testset)
-rmse(testset$Weekly_Sales,predicted) #146,743 
+rmse(testset$Weekly_Sales-predicted) #146,743 
 
 #Type C
 #Grow the tree#
@@ -523,7 +523,7 @@ fancyRpartPlot(m8, cex=0.5)
 printcp(m8, digits = 3)
 m8$variable.importance
 predicted <- predict(m8, testset)
-rmse(testset$Weekly_Sales,predicted) #65,843 
+rmse(testset$Weekly_Sales-predicted) #65,843 
 
 #======RANDOM FOREST======
 
@@ -538,7 +538,7 @@ testset <- subset(walmart2011.dt, train == F)
 fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
 print(fit)
 predicted <- predict(fit, testset)
-rmse(testset$Weekly_Sales,predicted) #123,104
+rmse(testset$Weekly_Sales-predicted) #123,104
 
 #Type A#
 #Train Model A#
@@ -554,7 +554,7 @@ mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Pric
 print(mA1)
 predmA1<-predict(mA1,testset)
 #Calculating testset error#
-rmse(testset$Weekly_Sales,predmA1) #168,327
+rmse(testset$Weekly_Sales-predmA1) #168,327
 
 #Type B#
 #Train Model B#
@@ -570,7 +570,7 @@ mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Pric
 print(mB1)
 predmB1<-predict(object=mB1,testset)
 #Calculating testset error#
-rmse(testset$Weekly_Sales,predmB1) #123,131
+rmse(testset$Weekly_Sales-predmB1) #123,131
 
 #Type C#
 #Train Model C#
@@ -586,4 +586,4 @@ mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Pric
 print(mC1)
 predmC1<-predict(object=mC1,testset)
 #Calculating testset error#
-rmse(testset$Weekly_Sales,predmC1) #65,472
+rmse(testset$Weekly_Sales-predmC1) #65,472

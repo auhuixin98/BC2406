@@ -9,6 +9,7 @@ library(caTools)
 library(RColorBrewer)
 library(rattle)
 library(car)
+library(randomForest)
 
 #========DATA CLEANING========
 
@@ -115,6 +116,9 @@ write.csv(walmart2011.1, file="walmartCLEANED2011-1.csv", row.names=FALSE)
 walmart.a <- walmart2011.dt[Type == 'A']
 walmart.b <- walmart2011.dt[Type == 'B']
 walmart.c <- walmart2011.dt[Type == 'C']
+walmart.a <- walmart.a[,Type:=NULL]
+walmart.b <- walmart.b[,Type:=NULL]
+walmart.c <- walmart.c[,Type:=NULL]
 
 #Creating a function to calculate RMSE
 rmse <- function(error)
@@ -215,8 +219,6 @@ plot(m3)  # Plot model 1 diagnostics
 par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
 
 #WALMART SIZE A
-walmart.a <- walmart[Type=="A"]
-walmart.a <- walmart.a[,Type:=NULL]
 
 #linear regression  full
 m7<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.a)
@@ -301,9 +303,6 @@ par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
 
 #WALMART B 
 
-walmart.b <- walmart[Type=="B"]
-walmart.b <- walmart.b[,Type:=NULL]
-
 #linear regression full
 m11<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.b)
 summary(m11) #0.7925 
@@ -364,9 +363,6 @@ par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
 
 
 #WALMART C
-
-walmart.c <- walmart[Type=="C"]
-walmart.c <- walmart.c[,Type:=NULL]
 
 #linear regression full
 m16<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.c)
@@ -442,7 +438,6 @@ par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
 
 #=======CRT=======
 
-
 set.seed(2004)
 options(digits = 3)
 
@@ -469,7 +464,6 @@ rmse(testset$Weekly_Sales,predicted) #142688
 
 #Type A
 #Grow the tree#
-walmart.a <- walmart2011.dt[Type == 'A']
 set.seed(2004)
 train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
 trainset <- subset(walmart.a, train == T)
@@ -491,7 +485,6 @@ rmse(testset$Weekly_Sales,predicted) #167,727
 
 #Type B
 #Grow the tree#
-walmart.b <- walmart2011.dt[Type == 'B']
 set.seed(2004)
 train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
 trainset <- subset(walmart.b, train == T)
@@ -513,7 +506,6 @@ rmse(testset$Weekly_Sales,predicted) #146,743
 
 #Type C
 #Grow the tree#
-walmart.c <- walmart2011.dt[Type == 'C']
 set.seed(2004)
 train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
 trainset <- subset(walmart.c, train == T)
@@ -532,3 +524,66 @@ printcp(m8, digits = 3)
 m8$variable.importance
 predicted <- predict(m8, testset)
 rmse(testset$Weekly_Sales,predicted) #65,843 
+
+#======RANDOM FOREST======
+
+options(digits = 3)
+summary(walmart2011.dt)
+
+#randomForest model#
+set.seed(2004)
+train <- sample.split(Y = walmart2011.dt$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.dt, train == T)
+testset <- subset(walmart2011.dt, train == F)
+fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(fit)
+predicted <- predict(fit, testset)
+rmse(testset$Weekly_Sales,predicted) #123,104
+
+#Type A#
+#Train Model A#
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mA1)
+predmA1<-predict(mA1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmA1) #168,327
+
+#Type B#
+#Train Model B#
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mB1)
+predmB1<-predict(object=mB1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmB1) #123,131
+
+#Type C#
+#Train Model C#
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mC1)
+predmC1<-predict(object=mC1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmC1) #65,472

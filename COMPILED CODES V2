@@ -1,0 +1,598 @@
+setwd("C:/Users/Shanaz/Desktop/YEAR 2/SEM 1/BC2406 ANALYTICS/project")
+library(data.table)
+walmart.dt <- fread('train.csv')
+
+library(Metrics)
+library(rpart)
+library(rpart.plot)
+library(caTools)
+library(RColorBrewer)
+library(rattle)
+library(car)
+library(randomForest)
+
+#========DATA CLEANING========
+
+#Factorize store, dept, date, type & holiday
+walmart.dt$Store <- factor(walmart.dt$Store)
+walmart.dt$Dept <- factor(walmart.dt$Dept)
+walmart.dt$IsHoliday <- factor(walmart.dt$IsHoliday)
+walmart.dt$Date<-factor(walmart.dt$Date)
+walmart.dt$Type<-factor(walmart.dt$Type)
+summary(walmart.dt)
+
+#Remove negative weekly sales 
+walmart.dt$Weekly_Sales <- abs(walmart.dt$Weekly_Sales)
+summary(walmart.dt$Weekly_Sales)
+
+#take NA in markdown as 0 
+walmart.dt<-walmart.dt[is.na(MarkDown1),MarkDown1:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown2),MarkDown2:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown3),MarkDown3:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown4),MarkDown4:=0]
+walmart.dt<-walmart.dt[is.na(MarkDown5),MarkDown5:=0]
+
+#Average the markdown for the week
+walmart.dt<-walmart.dt[,TotalMarkDown:=MarkDown1+MarkDown2+MarkDown3+MarkDown4+MarkDown5]
+summary(walmart.dt$TotalMarkDown)
+walmart.dt<-walmart.dt[,AverageMarkDown:=TotalMarkDown/5]
+summary(walmart.dt$AverageMarkDown)
+
+#Summing up the Weekly Sales by Store
+col.names <- c("Store", "Date", "Weekly_Sales", "IsHoliday", "Temperature","Fuel_Price","Average_Mark_Down","CPI","Unemployment", "Size", "Type")
+c2 <- walmart.dt[, sum(Weekly_Sales), by = list(Store,Date)]
+walmart1.dt<-c2
+c2<-walmart.dt[,unique(IsHoliday),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Temperature),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Fuel_Price),by=list(Store,Date)]
+colnames(c2)[3]<-"V2"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(AverageMarkDown),by=list(Store,Date)]
+colnames(c2)[3]<-"V3"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(CPI),by=list(Store,Date)]
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Unemployment),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Size),by=list(Store,Date)]
+colnames(c2)[3]<-"V4"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+c2<-walmart.dt[,unique(Type), by=list(Store,Date)]
+colnames(c2)[3]<-"V5"
+walmart1.dt<-merge(walmart1.dt, c2, by =c('Store','Date'), all = T)
+colnames(walmart1.dt) <- col.names
+
+#subset data to only include for year 2011 as it is the recent full year
+walmart1.dt$Year <- substr(walmart1.dt$Date,1,4)
+walmart2011.dt<-walmart1.dt[Year==2011]
+summary(walmart2011.dt)
+
+#remove year column
+walmart2011.dt<-walmart2011.dt[,Year:=NULL]
+
+#boxplot of size for each type
+boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size", main = "Distributions of Size across Type")
+
+#explore data for the type A
+walmart2011.dt[Type=='A',summary(Size)]
+walmart2011.dt[Type=='A'&Size<158114,unique(Size),by=Store]
+#store 33 & store 36 size differs greatly from average supercentre (type A) and matches the mean for store
+
+#explore data for type B
+walmart2011.dt[Type=='B',summary(Size)]
+walmart2011.dt[Type=='B'&Size<93188,unique(Size),by=Store]
+#store 3 and 5 are outliers for type B and matches more for type C
+
+#explore data for type C
+walmart2011.dt[Type=='C',summary(Size)]
+
+#recode stores 33&36&3&5 to type C
+walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, Type:='C']
+#verify
+walmart2011.dt[Store==33 | Store==36 | Store==3 | Store==5, unique(Type), by=Store]
+boxplot(walmart2011.dt$Size ~ walmart2011.dt$Type, xlab = "Type", ylab = "Size", main = "Distributions of Size across Type")
+
+#Change date to continuous variable, week
+walmart2011.dt[order(Date),week := week(Date)]
+walmart2011.dt[,week := week-1]
+
+#narrowing
+summary(walmart2011.dt$Weekly_Sales)
+plot(jitter(as.numeric(walmart2011.dt$Weekly_Sales)))
+abline(h=1750000, col="blue")
+boxplot(walmart2011.dt$Weekly_Sales)
+walmart2011.1<-walmart2011.dt[Weekly_Sales<=1750000]
+
+#remove date column
+walmart2011.1[,Date:=NULL]
+
+#include only 2011
+#write it to a new csv
+write.csv(walmart2011.1, file="walmartCLEANED2011-1.csv", row.names=FALSE)
+
+#Subset by Type
+walmart.a <- walmart2011.1[Type == 'A']
+walmart.b <- walmart2011.1[Type == 'B']
+walmart.c <- walmart2011.1[Type == 'C']
+walmart.a <- walmart.a[,Type:=NULL]
+walmart.b <- walmart.b[,Type:=NULL]
+walmart.c <- walmart.c[,Type:=NULL]
+
+#Creating a function to calculate RMSE
+#rmse <- function(error)
+#{
+#  sqrt(mean(error^2))
+#}
+#Calculating the baseline for different subset
+#Overall
+set.seed(2004)
+train <- sample.split(Y = walmart2011.1$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.1, train == T)
+testset <- subset(walmart2011.1, train == F)
+all.baseline <- rmse(testset$Weekly_Sales,mean(trainset$Weekly_Sales))
+all.baseline #359,446
+#Type A
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+a.baseline <- rmse(testset$Weekly_Sales,mean(trainset$Weekly_Sales))
+a.baseline #294,006
+
+#Type B
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+b.baseline <- rmse(testset$Weekly_Sales,mean(trainset$Weekly_Sales))
+b.baseline #260,508
+
+#Type C
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+c.baseline <- rmse(testset$Weekly_Sales-mean(trainset$Weekly_Sales))
+c.baseline <- rmse(testset$Weekly_Sales,mean(trainset$Weekly_Sales)) #94090
+c.baseline
+#========LINEAR REGRESSION========
+
+#check multicollinearity
+m1<-lm(Weekly_Sales ~.-Size-Type-CPI-Unemployment, data=walmart2011.1)
+summary(m1) #adjusted = 0.8725
+vif(m1)
+#size, type, CPI, unemployment
+
+
+#train test set
+set.seed(2004)
+train <- sample.split(Y = walmart2011.1$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.1, train == T)
+testset <- subset(walmart2011.1, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+m2 <- lm(Weekly_Sales ~ Store+IsHoliday+Temperature+Fuel_Price+Average_Mark_Down+week , data = trainset)
+summary(m2) #0.8718
+residuals(m2)
+RMSE.m2.train <- sqrt(mean(residuals(m2)^2))  # RMSE on trainset based on m16 model.
+RMSE.m2.train #RMSE value=133688.2
+summary(abs(residuals(m2)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m2.test <- predict(m2, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m2.test
+RMSE.m2.test <- sqrt(mean(testset.error^2))
+RMSE.m2.test
+#129562 RMSE
+summary(abs(testset.error))
+
+#linear regression based on p value
+m3<-lm(Weekly_Sales ~ Store+Average_Mark_Down+week, data=walmart2011.1)
+summary(m3) #0.8726
+
+#evaluate accuracy
+m4 <- lm(Weekly_Sales ~ Store+Average_Mark_Down+week, data = trainset)
+summary(m4)
+residuals(m4)
+RMSE.m4.train <- sqrt(mean(residuals(m4)^2))  # RMSE on trainset based on m16 model.
+RMSE.m4.train #RMSE value=133706.2
+summary(abs(residuals(m4)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m4.test <- predict(m4, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m4.test
+RMSE.m4.test <- sqrt(mean(testset.error^2))
+RMSE.m4.test
+#129631.5 RMSE
+summary(abs(testset.error))
+
+#backwards regression
+m.full1 <- lm(Weekly_Sales ~. -Size-Type-CPI-Unemployment , data=walmart2011.1) 
+m5 <- step(m.full1, direction="backward")
+summary(m5)
+#week, average mark down, store
+
+m.full2 <- lm(Weekly_Sales ~ .-Size-Type-CPI-Unemployment , data=walmart2011.1)
+m6 <- step(m.full2, direction="both")
+#store, average mark down, week 
+
+
+#model diagnostic plots
+par(mfrow = c(2,2))  # Plot 4 charts in one plot - 2 by 2.
+plot(m3)  # Plot model 1 diagnostics
+#see the plots one by one
+#able to see better
+par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
+
+#WALMART SIZE A
+
+#linear regression  full
+m7<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.a)
+summary(m7) #0.6788
+library(car)
+vif(m7)
+
+#evaluate
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+m8 <- lm(Weekly_Sales ~ .-Size-CPI-Unemployment, data = trainset)
+summary(m8)
+residuals(m8)
+RMSE.m8.train <- sqrt(mean(residuals(m8)^2))  # RMSE on trainset based on m16 model.
+RMSE.m8.train #RMSE value=162988.4
+summary(abs(residuals(m8)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m8.test <- predict(m8, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m8.test
+RMSE.m8.test <- sqrt(mean(testset.error^2))
+RMSE.m8.test
+#166299 RMSE
+summary(abs(testset.error))
+
+#based on p value
+m9<-lm(Weekly_Sales ~ Store+week, data=walmart.a)
+summary(m9) #0.6777
+
+#evaluate
+m10 <- lm(Weekly_Sales ~ Store+week, data = trainset)
+summary(m10)
+residuals(m10)
+RMSE.m10.train <- sqrt(mean(residuals(m10)^2))  # RMSE on trainset based on m16 model.
+RMSE.m10.train #RMSE value=163893.8
+summary(abs(residuals(m10)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m10.test <- predict(m10, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m10.test
+RMSE.m10.test <- sqrt(mean(testset.error^2))
+RMSE.m10.test
+#165822.9 RMSE
+summary(abs(testset.error))
+
+#backwise
+m.full3 <- lm(Weekly_Sales ~ .-CPI-Size-Unemployment, data=walmart.a) 
+m11<- step(m.full3)
+summary(m11) #0.6794
+vif(m11)
+#only store and week and average markdown
+
+m.full4 <- lm(Weekly_Sales ~ .-CPI-Size-Unemployment , data=walmart.a)
+m12 <- step(m.full4, direction="both")
+summary(m12)
+levels(walmart.a$Store)
+#store, week, average markdown
+
+#evaluate
+m13 <- lm(Weekly_Sales ~ Store+week+Average_Mark_Down, data = trainset)
+summary(m13)
+residuals(m13)
+RMSE.m13.train <- sqrt(mean(residuals(m13)^2))  # RMSE on trainset based on m16 model.
+RMSE.m13.train #RMSE value=163232.4
+summary(abs(residuals(m13)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m13.test <- predict(m13, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m13.test
+RMSE.m13.test <- sqrt(mean(testset.error^2))
+RMSE.m13.test
+#165788.2 RMSE
+summary(abs(testset.error))
+
+#model diagnostic plots
+par(mfrow = c(2,2))  # Plot 4 charts in one plot - 2 by 2.
+plot(m11)  # Plot model 1 diagnostics
+#see the plots one by one
+#able to see better
+par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
+
+#WALMART B 
+
+#linear regression full
+m11<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.b)
+summary(m11) #0.7925 
+vif(m11)
+
+#evaluate
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+m12 <- lm(Weekly_Sales ~ .-Size-CPI-Unemployment, data = trainset)
+summary(m12)
+residuals(m12)
+RMSE.m12.train <- sqrt(mean(residuals(m12)^2))  # RMSE on trainset based on m16 model.
+RMSE.m12.train #RMSE value=118369.5
+summary(abs(residuals(m12)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m12.test <- predict(m12, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m12.test
+RMSE.m12.test <- sqrt(mean(testset.error^2))
+RMSE.m12.test
+#120559.5
+
+#linear regression p value
+m13<-lm(Weekly_Sales ~Store+Average_Mark_Down+week, data=walmart.b)
+summary(m13) #0.7928
+
+#evaluate
+m14 <- lm(Weekly_Sales ~ Store+Average_Mark_Down+week, data = trainset)
+summary(m14)
+residuals(m14)
+RMSE.m14.train <- sqrt(mean(residuals(m14)^2))  # RMSE on trainset based on m16 model.
+RMSE.m14.train #RMSE value=118456.4
+summary(abs(residuals(m14)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m14.test <- predict(m14, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m14.test
+RMSE.m14.test <- sqrt(mean(testset.error^2))
+RMSE.m14.test
+#120577.6
+
+#backwards
+m.full5 <- lm(Weekly_Sales ~ .-Size-Unemployment-CPI, data=walmart.b) 
+m15 <- step(m.full5)
+summary(m15) #0.7928
+vif(m15)
+#only store, week and average mark down
+
+#model diagnostic plots
+par(mfrow = c(2,2))  # Plot 4 charts in one plot - 2 by 2.
+plot(m13)  # Plot model 1 diagnostics
+#see the plots one by one
+#able to see better
+par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
+
+
+#WALMART C
+
+#linear regression full
+m16<-lm(Weekly_Sales ~.-Size-CPI-Unemployment, data=walmart.c)
+summary(m16) #0.6186
+vif(m16)
+
+#evaluate
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+m17 <- lm(Weekly_Sales ~ .-Size-CPI-Unemployment, data = trainset)
+summary(m17)
+residuals(m17)
+RMSE.m17.train <- sqrt(mean(residuals(m17)^2))  # RMSE on trainset based on m17 model.
+RMSE.m17.train #RMSE value=59082.89 #55186.17
+summary(abs(residuals(m17)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m17.test <- predict(m17, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m17.test
+RMSE.m17.test <- sqrt(mean(testset.error^2))
+RMSE.m17.test
+#57886.78 RMSE #65444.15
+summary(abs(testset.error))
+
+#lin reg p value
+m18<-lm(Weekly_Sales ~Store+Average_Mark_Down, data=walmart.c)
+summary(m18) #0.6174
+
+#evaluate
+m19 <- lm(Weekly_Sales ~ Store+Average_Mark_Down, data = trainset)
+summary(m19)
+residuals(m19)
+RMSE.m19.train <- sqrt(mean(residuals(m19)^2))  # RMSE on trainset based on m19 model.
+RMSE.m19.train #RMSE value=59475.16 #55749.18
+summary(abs(residuals(m19)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m19.test <- predict(m19, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m19.test
+RMSE.m19.test <- sqrt(mean(testset.error^2))
+RMSE.m19.test
+#57849.26 #64986.73
+
+#backwards
+m.full6 <- lm(Weekly_Sales ~ .-Size-Unemployment-CPI, data=walmart.c) 
+m20 <- step(m.full6)
+summary(m20) #0.6181
+vif(m20)
+#only store, average mark down, temperature
+
+#evaluate
+m21 <- lm(Weekly_Sales ~ Store+Average_Mark_Down+Temperature, data = trainset)
+summary(m21)
+residuals(m21)
+RMSE.m21.train <- sqrt(mean(residuals(m21)^2))  # RMSE on trainset based on m21 model.
+RMSE.m21.train #RMSE value=59251.24 #55686.91
+summary(abs(residuals(m21)))  # Check Min Abs Error and Max Abs Error.
+
+predict.m21.test <- predict(m21, newdata = testset)
+testset.error <- testset$Weekly_Sales - predict.m21.test
+RMSE.m21.test <- sqrt(mean(testset.error^2))
+RMSE.m21.test
+#58171.98 #64825.71
+
+#model diagnostic plots
+par(mfrow = c(2,2))  # Plot 4 charts in one plot - 2 by 2.
+plot(m16)  # Plot model 1 diagnostics
+#see the plots one by one
+#able to see better
+par(mfrow = c(1,1))  # Reset plot options to 1 chart in one plot.
+
+#=======CRT=======
+
+set.seed(2004)
+options(digits = 3)
+
+#CRT for all the variables#
+#Growing the tree#
+set.seed(2004)
+train <- sample.split(Y = walmart2011.1$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.1, train == T)
+testset <- subset(walmart2011.1, train == F)
+m1 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Type+Size+CPI+Unemployment+IsHoliday, data = trainset, method = 'anova', cp=0)
+prp(m1)
+printcp(m1)
+plotcp(m1)
+cp.opt <- m1$cptable[which.min(m1$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m2 <- prune(m1,cp = cp.opt)
+prp(m2,nn.box.col = 'light blue', cex=0.3)
+fancyRpartPlot(m2, cex=0.5)
+printcp(m2, digits = 3)
+m2$variable.importance
+predicted <- predict(m2, testset)
+rmse(testset$Weekly_Sales,predicted) #142688 #133235
+
+
+
+#Type A
+#Grow the tree#
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+m3 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m3)
+printcp(m3)
+plotcp(m3)
+cp.opt <- m3$cptable[which.min(m3$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m4 <- prune(m3,cp = cp.opt)
+prp(m4,nn.box.col = 'light blue', cex=0.7)
+fancyRpartPlot(m4, cex=0.6)
+printcp(m4, digits = 3)
+m4$variable.importance
+predicted <- predict(m4, testset)
+rmse(testset$Weekly_Sales,predicted) #167,727 #159,556
+
+#Type B
+#Grow the tree#
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+m5 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m5)
+printcp(m5)
+plotcp(m5)
+cp.opt <- m5$cptable[which.min(m5$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m6 <- prune(m5,cp = cp.opt)
+prp(m6,nn.box.col = 'light blue')
+fancyRpartPlot(m6, cex=0.6)
+printcp(m6, digits = 3)
+m6$variable.importance
+predicted <- predict(m6, testset)
+rmse(testset$Weekly_Sales,predicted) #146,743 #136,770
+
+#Type C
+#Grow the tree#
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+m7 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
+prp(m7)
+printcp(m7)
+plotcp(m7)
+cp.opt <- m7$cptable[which.min(m7$cptable[,"xerror"]),"CP"]
+#Prune the tree#
+set.seed(2004)
+m8 <- prune(m7,cp = cp.opt)
+prp(m8,nn.box.col = 'light blue')  
+fancyRpartPlot(m8, cex=0.5)
+printcp(m8, digits = 3)
+m8$variable.importance
+predicted <- predict(m8, testset)
+rmse(testset$Weekly_Sales,predicted) #65,843 #66,737
+
+#======RANDOM FOREST======
+
+options(digits = 3)
+summary(walmart2011.1)
+
+#randomForest model#
+set.seed(2004)
+train <- sample.split(Y = walmart2011.1$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart2011.1, train == T)
+testset <- subset(walmart2011.1, train == F)
+fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(fit)
+predicted <- predict(fit, testset)
+rmse(testset$Weekly_Sales,predicted) #123,104 #122,654
+
+#Type A#
+#Train Model A#
+set.seed(2004)
+train <- sample.split(Y = walmart.a$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.a, train == T)
+testset <- subset(walmart.a, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mA1)
+predmA1<-predict(mA1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmA1) #168,327 #169,084
+
+#Type B#
+#Train Model B#
+set.seed(2004)
+train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.b, train == T)
+testset <- subset(walmart.b, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mB1)
+predmB1<-predict(object=mB1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmB1) #123,131 #123,204
+
+#Type C#
+#Train Model C#
+set.seed(2004)
+train <- sample.split(Y = walmart.c$Weekly_Sales, SplitRatio = 0.7)
+trainset <- subset(walmart.c, train == T)
+testset <- subset(walmart.c, train == F)
+summary(trainset$Weekly_Sales)
+summary(testset$Weekly_Sales)
+#Develop model on trainset#
+set.seed(2004)
+mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+print(mC1)
+predmC1<-predict(object=mC1,testset)
+#Calculating testset error#
+rmse(testset$Weekly_Sales,predmC1) #65,472 #65141

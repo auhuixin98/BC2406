@@ -534,8 +534,6 @@ rmse(testset$Weekly_Sales,predicted) #66,737
 
 #======RANDOM FOREST======
 
-#======RANDOM FOREST======
-
 options(digits = 3)
 summary(walmart2011.1)
 

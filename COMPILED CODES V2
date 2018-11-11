@@ -467,9 +467,7 @@ fancyRpartPlot(m2, cex=0.5)
 printcp(m2, digits = 3)
 m2$variable.importance
 predicted <- predict(m2, testset)
-rmse(testset$Weekly_Sales,predicted) #142688 #133235
-
-
+rmse(testset$Weekly_Sales,predicted) #135264
 
 #Type A
 #Grow the tree#
@@ -485,12 +483,12 @@ cp.opt <- m3$cptable[which.min(m3$cptable[,"xerror"]),"CP"]
 #Prune the tree#
 set.seed(2004)
 m4 <- prune(m3,cp = cp.opt)
-prp(m4,nn.box.col = 'light blue', cex=0.7)
+prp(m4,nn.box.col = 'light blue', cex=0.6)
 fancyRpartPlot(m4, cex=0.6)
 printcp(m4, digits = 3)
 m4$variable.importance
 predicted <- predict(m4, testset)
-rmse(testset$Weekly_Sales,predicted) #167,727 #159,556
+rmse(testset$Weekly_Sales,predicted) #177,240
 
 #Type B
 #Grow the tree#
@@ -499,19 +497,19 @@ train <- sample.split(Y = walmart.b$Weekly_Sales, SplitRatio = 0.7)
 trainset <- subset(walmart.b, train == T)
 testset <- subset(walmart.b, train == F)
 m5 <- rpart(Weekly_Sales ~ Store+week+Temperature+Fuel_Price+Average_Mark_Down+Size+CPI+Unemployment+IsHoliday, data = trainset,method = 'anova', cp=0)
-prp(m5)
+
 printcp(m5)
 plotcp(m5)
 cp.opt <- m5$cptable[which.min(m5$cptable[,"xerror"]),"CP"]
 #Prune the tree#
 set.seed(2004)
 m6 <- prune(m5,cp = cp.opt)
-prp(m6,nn.box.col = 'light blue')
-fancyRpartPlot(m6, cex=0.6)
+prp(m6,nn.box.col = 'light blue',cex=0.7)
+fancyRpartPlot(m6, cex=0.8)
 printcp(m6, digits = 3)
 m6$variable.importance
 predicted <- predict(m6, testset)
-rmse(testset$Weekly_Sales,predicted) #146,743 #136,770
+rmse(testset$Weekly_Sales,predicted) #136,770
 
 #Type C
 #Grow the tree#
@@ -532,7 +530,9 @@ fancyRpartPlot(m8, cex=0.5)
 printcp(m8, digits = 3)
 m8$variable.importance
 predicted <- predict(m8, testset)
-rmse(testset$Weekly_Sales,predicted) #65,843 #66,737
+rmse(testset$Weekly_Sales,predicted) #66,737
+
+#======RANDOM FOREST======
 
 #======RANDOM FOREST======
 
@@ -544,10 +544,11 @@ set.seed(2004)
 train <- sample.split(Y = walmart2011.1$Weekly_Sales, SplitRatio = 0.7)
 trainset <- subset(walmart2011.1, train == T)
 testset <- subset(walmart2011.1, train == F)
-fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+fit <- randomForest(Weekly_Sales ~ Type+Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, importance = TRUE, data = trainset)
 print(fit)
+fit$importance
 predicted <- predict(fit, testset)
-rmse(testset$Weekly_Sales,predicted) #123,104 #122,654
+rmse(testset$Weekly_Sales,predicted) #130,220
 
 #Type A#
 #Train Model A#
@@ -559,8 +560,9 @@ summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
 set.seed(2004)
-mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+mA1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, importance= TRUE,data = trainset)
 print(mA1)
+mA1$importance
 predmA1<-predict(mA1,testset)
 #Calculating testset error#
 rmse(testset$Weekly_Sales,predmA1) #168,327 #169,084
@@ -575,8 +577,9 @@ summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
 set.seed(2004)
-mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+mB1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, importance = TRUE, data = trainset)
 print(mB1)
+mB1$importance
 predmB1<-predict(object=mB1,testset)
 #Calculating testset error#
 rmse(testset$Weekly_Sales,predmB1) #123,131 #123,204
@@ -591,8 +594,9 @@ summary(trainset$Weekly_Sales)
 summary(testset$Weekly_Sales)
 #Develop model on trainset#
 set.seed(2004)
-mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, data = trainset)
+mC1<-randomForest(Weekly_Sales ~ Size+IsHoliday+Store+week+Temperature+Fuel_Price+CPI+Unemployment+Average_Mark_Down, importance = TRUE, data = trainset)
 print(mC1)
+mC1$importance
 predmC1<-predict(object=mC1,testset)
 #Calculating testset error#
-rmse(testset$Weekly_Sales,predmC1) #65,472 #65141
+rmse(testset$Weekly_Sales,predmC1) #65,486
